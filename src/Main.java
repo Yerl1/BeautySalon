@@ -1,150 +1,129 @@
-import java.net.IDN;
-import java.util.ArrayList;
+import Controllers.BeautyController;
+import Controllers.BookingController;
+import Controllers.UserConroller;
+import Repositories.BeautyRepository;
+import Repositories.BookingRepository;
+import Repositories.UserRepository;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.Scanner;
 
-
-public class Main {
+public class Main{
+    private static final String JDBC_URL = "jdbc:postgresql://localhost:5432/postgres";
+    private static final String USERNAME = "postgres";
+    private static final String PASSWORD = "16022006";
     public static void main(String[] args) {
-        BeautySalon beautySalon = new BeautySalon();
+        try{
+            Class.forName("org.postgresql.Driver");
+            Connection connection = DriverManager.getConnection(JDBC_URL, USERNAME, PASSWORD);
+
+            createBookingTable(connection);
+            createProcedureTable(connection);
+            createUserTable(connection);
+
+            UserRepository userRepository = new UserRepository(connection);
+            UserConroller userConroller = new UserConroller(userRepository);
+
+            BookingRepository bookingRepository = new BookingRepository(connection);
+            BookingController bookingController = new BookingController(bookingRepository);
+
+            BeautyRepository beautyRepository = new BeautyRepository(connection);
+            BeautyController beautyController = new BeautyController(beautyRepository);
+
+            runBeautySalonApp(userConroller,beautyController,bookingController);
+
+        } catch (ClassNotFoundException | SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static void createUserTable(Connection connection) throws SQLException{
+        try(Statement statement = connection.createStatement()){
+            String createTableQuery = "CREATE TABLE IF NOT EXISTS users ("
+                    + "id SERIAL PRIMARY KEY,"
+                    + "name_ VARCHAR(50) NOT NULL,"
+                    + "status INT NOT NULL,"
+                    + "balance DOUBLE PRECISION NOT NULL)";
+            statement.executeUpdate(createTableQuery);
+        }
+    }
+
+    public static void createBookingTable(Connection connection) throws SQLException{
+        try(Statement statement = connection.createStatement()){
+            String createTableQuery = "CREATE TABLE IF NOT EXISTS bookings("
+                    + "id SERIAL PRIMARY KEY,"
+                    + "username VARCHAR(50) NOT NULL,"
+                    + "name_of_procedure VARCHAR(150) NOT NULL,"
+                    + "date_ VARCHAR(12) NOT NULL,"
+                    + "time_ VARCHAR(6) NOT NULL)";
+            statement.executeUpdate(createTableQuery);
+        }
+    }
+
+    public static void createProcedureTable(Connection connection) throws SQLException{
+        try(Statement statement = connection.createStatement()){
+            String createTableQuery = "CREATE TABLE IF NOT EXISTS procedures("
+                    + "id SERIAL PRIMARY KEY,"
+                    + "title VARCHAR(50) NOT NULL,"
+                    + "price INT NOT NULL,"
+                    + "description VARCHAR(100) NOT NULL)";
+            statement.executeUpdate(createTableQuery);
+        }
+    }
+    private static void runBeautySalonApp(UserConroller userConroller, BeautyController beautyController, BookingController bookingController){
         Scanner scanner = new Scanner(System.in);
-        scanner.useDelimiter("\n");
 
-        int action;
-        for(;;){
-            System.out.println("Choose the action:");
-            System.out.println("1) To show beauty procedures list;");
-            System.out.println("2) To add a beauty procedure;");
-            System.out.println("3) To add a new user;");
-            System.out.println("4) To book for a beauty procedure;");
-            System.out.println("5) To cancel booking for a beauty procedure;");
-            System.out.println("6) To show booking history;");
-            System.out.println("7) To get user's information");
-            System.out.println("0) Exit.");
+        while(true){
+            System.out.println("1) Add new user");
+            System.out.println("2) Delete user");
+            System.out.println("3) Get all users");
+            System.out.println("4) Add new beauty procedure");
+            System.out.println("5) Delete procedure");
+            System.out.println("6) Get all procedures");
+            System.out.println("7) Book for a procedure");
+            System.out.println("8) Cancel booking");
+            System.out.println("9) Get all bookings");
+            System.out.println("10) Quit");
 
-            System.out.println("Choose the option:");
-            action = Integer.parseInt(scanner.next());
-
-            switch (action) {
+            System.out.println("Make your choice: ");
+            int choice = scanner.nextInt();
+            switch (choice){
                 case 1:
-                    beautySalon.getProcedures();
+                    userConroller.addUser(scanner);
                     break;
                 case 2:
-                    System.out.println("Print the name of the procedure:");
-                    String name_of_procedure = scanner.next();
-
-                    System.out.println("Print the price of the procedure:");
-                    int procedure_price = Integer.parseInt(scanner.next());
-
-                    System.out.println("Print the description of the procedure:");
-                    String procedure_description = scanner.next().toString();
-
-                    BeautyProcedure adding = new BeautyProcedure(name_of_procedure, procedure_price, procedure_description);
-                    beautySalon.setProcedure(adding);
-                    System.out.println("The procedure has been added successfully!");
+                    userConroller.deleteUser(scanner);
                     break;
                 case 3:
-                    System.out.println("Print a new user's name:");
-                    String user_name = scanner.next();
-
-                    System.out.println("Print a new user's balance:");
-                    int user_balance = Integer.parseInt(scanner.next());
-
-                    System.out.println("New user has been added successfully!" + '\n');
-                    System.out.println("-------------------------------------------------------------------------------");
-                    System.out.println("|   We have a great suggestion for you, buy a subscription \"VIP KAZASHKA\"   |");
-                    System.out.println("|                   and get any procedure for free!!!                         |");
-                    System.out.println("|                                                                             |");
-                    System.out.println("|              Do you want to get it for 2000$ ?   1)Yes 2)No                 |");
-                    System.out.println("-------------------------------------------------------------------------------");
-                    int choice  =  Integer.parseInt(scanner.next());
-                    if(choice == 1 && user_balance >= 2000){
-                        VIP_kaz new_user  = new VIP_kaz(user_name, user_balance);
-                        System.out.println("Done! Thank you!");
-                        new_user.setBalance(new_user.getBalance()-2000);
-                        beautySalon.setUser(new_user);
-                    }else if(choice == 1 && user_balance < 2000){
-                        System.out.println("Sorry, but you don't have enough money...");
-                    }else if(choice == 0){
-                        System.out.println("Thank you for your feedback!");
-                        Ordinary new_user = new Ordinary(user_name, user_balance);
-                        beautySalon.setUser(new_user);
-                    }
+                    userConroller.getALLUsers();
                     break;
                 case 4:
-                    System.out.println("Enter the name of the user you are going to book for");
-                    String name = scanner.next();
-                    int k = 0;
-                    for(User user : beautySalon.getUser()){
-                        if(name.equals(user.getUsername())){
-                            k=1;
-                            int n = 0;
-                            System.out.println("The user has been found\n" + "Enter the name of procedure:");
-                            String procedure_name = scanner.next();
-                            for(BeautyProcedure procedure: beautySalon.getProcedures_f()){
-                                if(procedure_name.equals(procedure.getProcedureName())){
-                                    n=1;
-                                    System.out.println("Write the date of booking:");
-                                    String booking_date = scanner.next();
-                                    System.out.println("Write the time of booking:");
-                                    String booking_time = null;
-                                    booking_time = scanner.next();
-                                    beautySalon.Booking_procedure(user, procedure, booking_date, booking_time);
-                                    break;
-                                }
-                            }
-                            if(n==0) {
-                                System.out.println("Procedure not found(");
-                            }
-                        }
-                        System.out.println(user.getBalance());
-
-                    }
-                    if(k == 0){
-                        System.out.println("User not found(");
-                    }
+                    beautyController.addProcedure(scanner);
                     break;
                 case 5:
-                    System.out.println("Enter the name of the user:");
-                    String Uname = scanner.next();
-                    int k2 = 0;
-                    for(User user : beautySalon.getUser()){
-                        if(Uname.equals(user.getUsername())){
-                            k=1;
-                            System.out.println("Bookings of the user:");
-                            System.out.println("ID:\t" + "Procedure name:\t" + "Date:\t" + "Time:\t");
-                            for(Booking booking : user.getTaking_procedures()){
-                                System.out.println(booking.getID() +"\t" + booking.getName() + "\t" + booking.getDate() + "\t" + booking.getTime());
-                            }
-                            System.out.println("Choose the ID of canceling booking");
-                            int Id = scanner.nextInt();
-                            user.getTaking_procedures().get(Id-1).setStatus(false);
-                            user.Delete_booking(Id-1);
-
-                        }
-                    }
-                    if(k2 == 0){
-                        System.out.println("User not found(");
-                    }
+                    beautyController.deleteProcedure(scanner);
                     break;
                 case 6:
-                    beautySalon.getBookingHistory();
+                    beautyController.getProcedures();
                     break;
                 case 7:
-                    System.out.println("Print a new user's name:");
-                    String user = scanner.next();
-                    for(User u : beautySalon.getUser()){
-                        if(user.equals(u.getUsername())){
-                            System.out.println("Name: " + u.getUsername() + '\n' + "Balance: " + u.getBalance() + '\n');
-                            if(u.getStatus() == 777) {
-                                System.out.println("Status: VIP KAZASHKA");
-                            }else{
-                                System.out.println("Status: Prostoy smertniy");
-                            }
-                        }
-                    }
-                default:
-                    System.out.println("Error!Choose the option again:");
+                    bookingController.addBooking(scanner);
+                    break;
+                case 8:
+                    bookingController.deleteBooking(scanner);
+                    break;
+                case 9:
+                    bookingController.getAllBookings();
+                    break;
+                case 10:
+                    System.out.println("Thank you for visiting us! Goodbye!");
+                    return;
+
             }
         }
+
     }
 }
